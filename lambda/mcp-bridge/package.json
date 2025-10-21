@@ -1,0 +1,9 @@
+{
+  "name": "mcp-bridge-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to bridge Bedrock Agent and MCP server",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "bash deploy.sh"
+  }
+}

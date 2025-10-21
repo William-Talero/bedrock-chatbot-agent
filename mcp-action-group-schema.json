@@ -1,0 +1,301 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Davivienda Infrastructure Tools API",
+    "version": "1.0.0",
+    "description": "API para herramientas de infraestructura cloud de Davivienda"
+  },
+  "paths": {
+    "/create-ec2": {
+      "post": {
+        "summary": "Crear instancia EC2",
+        "description": "Crea una nueva instancia EC2 en AWS con la configuración especificada",
+        "operationId": "createEC2Instance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EC2Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Instancia EC2 creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EC2Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/create-s3-bucket": {
+      "post": {
+        "summary": "Crear bucket S3",
+        "description": "Crea un nuevo bucket S3 en AWS",
+        "operationId": "createS3Bucket",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/S3BucketRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bucket S3 creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/S3BucketResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/list-resources": {
+      "post": {
+        "summary": "Listar recursos de infraestructura",
+        "description": "Lista recursos de AWS filtrados por tags",
+        "operationId": "listResources",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListResourcesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lista de recursos obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResourcesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/create-rds": {
+      "post": {
+        "summary": "Crear instancia RDS",
+        "description": "Crea una nueva instancia de base de datos RDS",
+        "operationId": "createRDSInstance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RDSRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Instancia RDS creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RDSResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EC2Request": {
+        "type": "object",
+        "properties": {
+          "instanceType": {
+            "type": "string",
+            "description": "Tipo de instancia EC2 (ej: t3.micro, t3.small, t3.medium)"
+          },
+          "ami": {
+            "type": "string",
+            "description": "ID de la AMI a utilizar"
+          },
+          "projectName": {
+            "type": "string",
+            "description": "Nombre del proyecto para etiquetado"
+          },
+          "department": {
+            "type": "string",
+            "description": "Departamento propietario del recurso"
+          },
+          "environment": {
+            "type": "string",
+            "description": "Ambiente (development, staging, production)"
+          }
+        },
+        "required": ["instanceType", "ami", "projectName"]
+      },
+      "EC2Response": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "description": "ID de la instancia EC2 creada"
+          },
+          "state": {
+            "type": "string",
+            "description": "Estado de la instancia"
+          },
+          "instanceType": {
+            "type": "string",
+            "description": "Tipo de instancia"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje de confirmación"
+          }
+        }
+      },
+      "S3BucketRequest": {
+        "type": "object",
+        "properties": {
+          "bucketName": {
+            "type": "string",
+            "description": "Nombre del bucket S3"
+          },
+          "region": {
+            "type": "string",
+            "description": "Región AWS donde crear el bucket"
+          },
+          "projectName": {
+            "type": "string",
+            "description": "Nombre del proyecto para etiquetado"
+          }
+        },
+        "required": ["bucketName", "projectName"]
+      },
+      "S3BucketResponse": {
+        "type": "object",
+        "properties": {
+          "bucketName": {
+            "type": "string",
+            "description": "Nombre del bucket creado"
+          },
+          "region": {
+            "type": "string",
+            "description": "Región del bucket"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje de confirmación"
+          }
+        }
+      },
+      "ListResourcesRequest": {
+        "type": "object",
+        "properties": {
+          "projectName": {
+            "type": "string",
+            "description": "Filtrar por nombre de proyecto"
+          },
+          "department": {
+            "type": "string",
+            "description": "Filtrar por departamento"
+          },
+          "resourceType": {
+            "type": "string",
+            "description": "Tipo de recurso (ec2, s3, rds, lambda)"
+          }
+        }
+      },
+      "ListResourcesResponse": {
+        "type": "object",
+        "properties": {
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resourceId": {
+                  "type": "string"
+                },
+                "resourceType": {
+                  "type": "string"
+                },
+                "projectName": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "description": "Cantidad total de recursos encontrados"
+          }
+        }
+      },
+      "RDSRequest": {
+        "type": "object",
+        "properties": {
+          "dbInstanceIdentifier": {
+            "type": "string",
+            "description": "Identificador de la instancia RDS"
+          },
+          "engine": {
+            "type": "string",
+            "description": "Motor de base de datos (mysql, postgres, mariadb)"
+          },
+          "instanceClass": {
+            "type": "string",
+            "description": "Clase de instancia (ej: db.t3.micro)"
+          },
+          "projectName": {
+            "type": "string",
+            "description": "Nombre del proyecto para etiquetado"
+          }
+        },
+        "required": ["dbInstanceIdentifier", "engine", "instanceClass", "projectName"]
+      },
+      "RDSResponse": {
+        "type": "object",
+        "properties": {
+          "dbInstanceIdentifier": {
+            "type": "string",
+            "description": "Identificador de la instancia creada"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Endpoint de conexión"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado de la instancia"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje de confirmación"
+          }
+        }
+      }
+    }
+  }
+}
