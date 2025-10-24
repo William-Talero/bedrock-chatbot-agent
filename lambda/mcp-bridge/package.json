@@ -1,9 +1,1 @@
-{
-  "name": "mcp-bridge-lambda",
-  "version": "1.0.0",
-  "description": "Lambda function to bridge Bedrock Agent and MCP server",
-  "main": "index.js",
-  "scripts": {
-    "deploy": "bash deploy.sh"
-  }
-}
+{"name":"bedrock-mcp-bridge","version":"1.0.0","dependencies":{"@aws-sdk/client-bedrock-agent":"^3.682.0","@aws-sdk/client-iam":"^3.682.0"}}

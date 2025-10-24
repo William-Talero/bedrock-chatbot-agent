@@ -1,4 +1,4 @@
-const { BedrockAgentClient, CreateAgentCommand, UpdateAgentCommand, ListAgentsCommand, PrepareAgentCommand, CreateAgentAliasCommand, GetAgentCommand } = require('@aws-sdk/client-bedrock-agent');
+const { BedrockAgentClient, CreateAgentCommand, UpdateAgentCommand, ListAgentsCommand, PrepareAgentCommand, CreateAgentAliasCommand } = require('@aws-sdk/client-bedrock-agent');
 const { IAMClient, CreateRoleCommand, AttachRolePolicyCommand, GetRoleCommand } = require('@aws-sdk/client-iam');
 
 const bedrockClient = new BedrockAgentClient({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -12,8 +12,7 @@ async function createAgentRole(agentName) {
     console.log(`Role ${roleName} already exists`);
     return existingRole.Role.Arn;
   } catch (error) {
-    if (error.name !== 'NoSuchEntityException' && error.name !== 'NoSuchEntity') throw error;
-    console.log(`Role ${roleName} does not exist, creating...`);
+    if (error.name !== 'NoSuchEntity') throw error;
   }
 
   const assumeRolePolicyDocument = {
@@ -71,38 +70,15 @@ async function createBedrockAgent(params) {
   }));
 
   const agentId = response.agent.agentId;
-  console.log(`Agent created with ID: ${agentId}, waiting for creation to complete...`);
+  console.log(`Agent created with ID: ${agentId}, preparing...`);
 
-  // Wait for agent to be in NOT_PREPARED state
-  let agentStatus = 'CREATING';
-  let attempts = 0;
-  const maxAttempts = 30;
-
-  while (agentStatus === 'CREATING' && attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const agentDetails = await bedrockClient.send(new GetAgentCommand({ agentId }));
-    agentStatus = agentDetails.agent.agentStatus;
-    console.log(`Agent status: ${agentStatus}, attempt ${attempts + 1}/${maxAttempts}`);
-    attempts++;
-  }
-
-  if (agentStatus === 'CREATING') {
-    return {
-      agentId,
-      agentName: response.agent.agentName,
-      agentStatus,
-      message: `Agent ${params.agentName} created but still in CREATING state. Call prepare-bedrock-agent later.`
-    };
-  }
-
-  console.log(`Agent ready, preparing...`);
   await bedrockClient.send(new PrepareAgentCommand({ agentId }));
 
   return {
     agentId,
     agentName: response.agent.agentName,
     agentArn: response.agent.agentArn,
-    agentStatus: 'PREPARED',
+    agentStatus: response.agent.agentStatus,
     foundationModel: response.agent.foundationModel,
     message: `Agent ${params.agentName} created successfully and prepared`
   };
@@ -254,40 +230,14 @@ exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
 
   try {
-    const { apiPath, requestBody, actionGroup, httpMethod } = event;
+    const { apiPath, parameters } = event;
 
     if (!apiPath) {
       return {
-        messageVersion: '1.0',
-        response: {
-          actionGroup: actionGroup || 'AgentCreationTools',
-          apiPath: apiPath || '/unknown',
-          httpMethod: httpMethod || 'POST',
-          httpStatusCode: 400,
-          responseBody: {
-            'application/json': {
-              body: JSON.stringify({ error: 'Missing apiPath in request' })
-            }
-          }
-        }
+        statusCode: 400,
+        body: { error: 'Missing apiPath in request' }
       };
     }
-
-    // Parse Bedrock Agent parameters format
-    const parameters = {};
-    if (requestBody && requestBody.content && requestBody.content['application/json']) {
-      const content = requestBody.content['application/json'];
-      // Content can be either a string or already parsed object
-      const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-
-      if (parsedContent.properties && Array.isArray(parsedContent.properties)) {
-        parsedContent.properties.forEach(prop => {
-          parameters[prop.name] = prop.value;
-        });
-      }
-    }
-
-    console.log('Parsed parameters:', parameters);
 
     const { tool, params } = mapBedrockToMcpTool(apiPath, parameters || {});
     console.log(`Executing tool: ${tool}`, params);
@@ -295,58 +245,27 @@ exports.handler = async (event) => {
     const handler = toolHandlers[tool];
     if (!handler) {
       return {
-        messageVersion: '1.0',
-        response: {
-          actionGroup: actionGroup || 'AgentCreationTools',
-          apiPath,
-          httpMethod: httpMethod || 'POST',
-          httpStatusCode: 400,
-          responseBody: {
-            'application/json': {
-              body: JSON.stringify({ error: `Unknown tool: ${tool}` })
-            }
-          }
-        }
+        statusCode: 400,
+        body: { error: `Unknown tool: ${tool}` }
       };
     }
 
     const result = await handler(params);
     console.log('Tool result:', result);
 
-    // Return in Bedrock Agent Response format
     return {
-      messageVersion: '1.0',
-      response: {
-        actionGroup: actionGroup || 'AgentCreationTools',
-        apiPath,
-        httpMethod: httpMethod || 'POST',
-        httpStatusCode: 200,
-        responseBody: {
-          'application/json': {
-            body: JSON.stringify(result)
-          }
-        }
-      }
+      statusCode: 200,
+      body: result
     };
 
   } catch (error) {
     console.error('Error processing request:', error);
 
     return {
-      messageVersion: '1.0',
-      response: {
-        actionGroup: event.actionGroup || 'AgentCreationTools',
-        apiPath: event.apiPath || '/unknown',
-        httpMethod: event.httpMethod || 'POST',
-        httpStatusCode: 500,
-        responseBody: {
-          'application/json': {
-            body: JSON.stringify({
-              error: error.message,
-              details: error.stack
-            })
-          }
-        }
+      statusCode: 500,
+      body: {
+        error: error.message,
+        details: error.stack
       }
     };
   }
